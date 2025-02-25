@@ -9,6 +9,8 @@ import SwiftUI
 import AVFoundation
 import AudioToolbox
 
+var audio_player: AVAudioPlayer?
+
 struct ContentView: View {
     @State private var start_time: Date? = nil
     @State private var displayed_time: String = "00:00"
@@ -53,7 +55,7 @@ struct ContentView: View {
                     .padding(.all)
                     .background(
                         RoundedRectangle(cornerRadius: 20)
-                            .foregroundStyle(start_time == nil ? Color.blue : Color.red)
+                            .foregroundStyle(start_time == nil ? Color.customPurple : Color.red)
                     )
             }
             Spacer()
@@ -75,7 +77,7 @@ struct ContentView: View {
                 Spacer()
                 Button {
                     flash()
-                    vibrate_sound()
+                    vibrate_sound(Sound.single)
                 } label: {
                     Text("Test Alert").foregroundStyle(timer == nil ? .white : .gray)
                 }.disabled(timer != nil)
@@ -94,6 +96,14 @@ struct ContentView: View {
         )
         .onAppear(perform: {
             UIApplication.shared.isIdleTimerDisabled = true
+            
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+                try AVAudioSession.sharedInstance().setActive(true)
+                print("Audio session configured successfully.")
+            } catch {
+                print("Failed to set audio session: \(error.localizedDescription)")
+            }
         })
     }
     func updateTimer() {
@@ -105,18 +115,18 @@ struct ContentView: View {
             
             if mins == 1 && !first_flash {
                 flash()
-                vibrate_sound()
+                vibrate_sound(Sound.single)
                 first_flash = true
             }
             if mins == (end-1) && !second_flash {
                 flash()
-                vibrate_sound()
+                vibrate_sound(Sound.single)
                 second_flash = true
             }
             if mins >= end {
-                if secs > 0 && !third_flash {
+                if secs >= 0 && !third_flash {
                     flash()
-                    vibrate_sound()
+                    vibrate_sound(Sound.double)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: {
                         flash()
                     })
@@ -124,9 +134,9 @@ struct ContentView: View {
                         flash()
                     })
                     third_flash = true
-                } else if secs > 15 {
+                } else if secs >= 15 {
                     flash()
-                    vibrate_sound()
+                    vibrate_sound(Sound.quadruple)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: {
                         flash()
                     })
@@ -136,6 +146,7 @@ struct ContentView: View {
                     timer = nil
                     first_flash = false
                     second_flash = false
+                    third_flash = false
                     self.start_time = nil
                 }
             }
@@ -153,13 +164,13 @@ struct ContentView: View {
         })
     }
     
-    func vibrate_sound() {
+    func vibrate_sound(_ sound: Sound) {
         if signal == .vibrate || signal == .sound {
             Vibration.error.vibrate()
         }
         
         if signal == .sound {
-            AudioServicesPlaySystemSound(1009)
+            sound.play()
         }
     }
     
@@ -195,6 +206,36 @@ enum Signal: String, Codable, CaseIterable, Identifiable {
     }
     
     var id: Self { return self }
+}
+
+enum Sound {
+    case single, double, quadruple
+    
+    public func play() {
+        switch self {
+        case .single:
+            play_sound_file("single")
+        case .double:
+            play_sound_file("double")
+        case .quadruple:
+            play_sound_file("quad")
+        }
+    }
+    
+    private func play_sound_file(_ filename: String) {
+        if let soundURL = Bundle.main.url(forResource: filename, withExtension: "mp3") {
+            do {
+                audio_player = try AVAudioPlayer(contentsOf: soundURL)
+                audio_player?.volume = 1.0  // Max volume
+                audio_player?.prepareToPlay()
+                audio_player?.play()
+            } catch {
+                print("Error playing sound: \(error.localizedDescription)")
+            }
+        } else {
+            print("Sound file not found")
+        }
+    }
 }
 
 enum Vibration {
