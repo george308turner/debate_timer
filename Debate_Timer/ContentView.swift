@@ -44,6 +44,7 @@ struct ContentView: View {
                     timer = nil
                     first_flash = false
                     second_flash = false
+                    third_flash = false
                 } else {
                     start_time = Date()
                     timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { _ in
