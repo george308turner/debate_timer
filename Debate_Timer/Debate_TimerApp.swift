@@ -11,7 +11,7 @@ import SwiftUI
 struct Debate_TimerApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MenuView()
         }
     }
 }
